@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Portfolio Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #22222e;
+      --accent: #00e5a0;
+      --accent2: #7c5cfc;
+      --red: #ff4e6a;
+      --green: #00e5a0;
+      --text: #e8e8f0;
+      --muted: #5a5a78;
+      --muted2: #3a3a52;
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .logo span { color: var(--accent); }
+    .header-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.8;
+    }
+    #live-clock { color: var(--accent); }
+
+    /* Summary cards */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .summary-card {
+      background: var(--surface);
+      padding: 1.5rem;
+      transition: background 0.2s;
+    }
+    .summary-card:hover { background: var(--surface2); }
+    .summary-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+    .summary-value {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .summary-value.gain { color: var(--green); }
+    .summary-value.loss { color: var(--red); }
+    .summary-sub {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    /* Section headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Add position button */
+    .btn-add {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1.1rem;
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-add:hover { opacity: 0.85; }
+    .btn-add:active { transform: scale(0.97); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1.8rem;
+    }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .form-input, .form-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      padding: 0.7rem 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+      appearance: none;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-input::placeholder { color: var(--muted2); }
+
+    /* Stock search */
+    .search-wrapper { position: relative; }
+    .search-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      z-index: 10;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .search-dropdown.open { display: block; }
+    .dropdown-item {
+      padding: 0.6rem 0.9rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .dropdown-item:hover { background: var(--border); }
+    .dropdown-item .ticker { color: var(--accent); font-weight: 500; }
+    .dropdown-item .name { color: var(--muted); font-size: 0.75rem; }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.8rem;
+      margin-top: 1.8rem;
+    }
+    .btn-cancel {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 0.7rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .btn-cancel:hover { border-color: var(--muted); color: var(--text); }
+    .btn-submit {
+      flex: 2;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem;
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-submit:hover { opacity: 0.85; }
+
+    /* Holdings table */
+    .holdings-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .holdings-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .holdings-table th {
+      font-size: 0.62rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 1rem 1.2rem;
+      text-align: left;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-weight: 400;
+    }
+    .holdings-table th.right { text-align: right; }
+    .holdings-table td {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .holdings-table tr:last-child td { border-bottom: none; }
+    .holdings-table tr {
+      background: var(--surface);
+      transition: background 0.15s;
+    }
+    .holdings-table tr:hover { background: var(--surface2); }
+
+    .ticker-cell { display: flex; align-items: center; gap: 0.8rem; }
+    .ticker-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .ticker-name { font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; }
+    .ticker-full { font-size: 0.7rem; color: var(--muted); margin-top: 1px; }
+
+    .td-right { text-align: right; }
+    .td-mono { font-family: var(--font-mono); }
+
+    .pnl-positive { color: var(--green); }
+    .pnl-negative { color: var(--red); }
+
+    .pnl-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .pnl-pill.up { background: rgba(0,229,160,0.1); color: var(--green); }
+    .pnl-pill.down { background: rgba(255,78,106,0.1); color: var(--red); }
+
+    .price-loading { color: var(--muted2); font-size: 0.8rem; }
+    .dot-pulse::after {
+      content: '...';
+      animation: dots 1.2s steps(3, end) infinite;
+    }
+    @keyframes dots {
+      0%,20% { content: '.'; }
+      40% { content: '..'; }
+      60%,100% { content: '...'; }
+    }
+
+    .btn-delete {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--font-mono);
+    }
+    .btn-delete:hover { border-color: var(--red); color: var(--red); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 5rem 2rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      border-style: dashed;
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .empty-sub { font-size: 0.8rem; color: var(--muted); }
+
+    /* Refresh indicator */
+    .refresh-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+    .refresh-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .api-notice {
+      background: rgba(124,92,252,0.08);
+      border: 1px solid rgba(124,92,252,0.2);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    .api-notice strong { color: var(--accent2); }
+
+    @media (max-width: 640px) {
+      .app { padding: 1rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .holdings-table th:nth-child(4),
+      .holdings-table td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">PORT<span>FOLIO</span></div>
+    <div class="header-meta">
+      <div id="live-clock">--:--:--</div>
+      <div>Mercado NY · NYSE / NASDAQ</div>
+    </div>
+  </header>
+
+  <div class="api-notice">
+    <strong>⚙ Configuración requerida:</strong> Para precios en tiempo real, agrega tu API key de
+    <a href="https://finnhub.io" target="_blank" style="color:var(--accent2)">Finnhub.io</a> (gratis) en la variable
+    <code style="color:var(--accent)">FINNHUB_API_KEY</code> en el archivo <code>config.js</code>.
+    Sin API key, los precios se simulan con variación aleatoria como demo.
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-label">Inversión Total</div>
+      <div class="summary-value" id="total-invested">$0.00</div>
+      <div class="summary-sub" id="positions-count">0 posiciones</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Valor Actual</div>
+      <div class="summary-value" id="total-current">$0.00</div>
+      <div class="summary-sub" id="last-update">Sin datos</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Ganancia / Pérdida</div>
+      <div class="summary-value" id="total-pnl">$0.00</div>
+      <div class="summary-sub" id="total-pnl-pct">0.00%</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Mejor Posición</div>
+      <div class="summary-value gain" id="best-position">—</div>
+      <div class="summary-sub" id="best-pct">—</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">Mis Posiciones</span>
+    <div style="display:flex;gap:1rem;align-items:center">
+      <div class="refresh-badge">
+        <div class="refresh-dot"></div>
+        <span id="refresh-label">Actualizando cada 60s</span>
+      </div>
+      <button class="btn-add" onclick="openModal()">
+        <span>+</span> Nueva Posición
+      </button>
+    </div>
+  </div>
+
+  <div id="holdings-container">
+    <div class="empty-state">
+      <div class="empty-icon">📈</div>
+      <div class="empty-title">No hay posiciones aún</div>
+      <div class="empty-sub">Agrega tu primera inversión para comenzar el seguimiento</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Nueva Posición</div>
+    <div class="form-grid">
+
+      <div class="form-group full">
+        <label class="form-label">Símbolo / Empresa</label>
+        <div class="search-wrapper">
+          <input type="text" id="search-input" class="form-input" placeholder="Ej: AAPL, Tesla, Microsoft..." autocomplete="off" oninput="handleSearch(this.value)"/>
+          <div class="search-dropdown" id="search-dropdown"></div>
+        </div>
+        <input type="hidden" id="selected-ticker"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Cantidad de acciones</label>
+        <input type="number" id="qty-input" class="form-input" placeholder="10" min="0.0001" step="any"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio de compra (USD)</label>
+        <input type="number" id="price-input" class="form-input" placeholder="150.00" min="0.01" step="any"/>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Fecha de compra</label>
+        <input type="date" id="date-input" class="form-input"/>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-submit" onclick="addPosition()">Agregar Posición</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// CONFIG — Reemplaza con tu API key de Finnhub
+// =============================================
+const FINNHUB_API_KEY = 'demo'; // Reemplaza con tu clave de https://finnhub.io
+
+// Catálogo de acciones populares para búsqueda local
+const STOCKS = [
+  { ticker: 'AAPL', name: 'Apple Inc.' },
+  { ticker: 'MSFT', name: 'Microsoft Corp.' },
+  { ticker: 'GOOGL', name: 'Alphabet Inc.' },
+  { ticker: 'AMZN', name: 'Amazon.com Inc.' },
+  { ticker: 'NVDA', name: 'NVIDIA Corp.' },
+  { ticker: 'META', name: 'Meta Platforms Inc.' },
+  { ticker: 'TSLA', name: 'Tesla Inc.' },
+  { ticker: 'NFLX', name: 'Netflix Inc.' },
+  { ticker: 'AMD', name: 'Advanced Micro Devices' },
+  { ticker: 'INTC', name: 'Intel Corp.' },
+  { ticker: 'CRM', name: 'Salesforce Inc.' },
+  { ticker: 'ORCL', name: 'Oracle Corp.' },
+  { ticker: 'ADBE', name: 'Adobe Inc.' },
+  { ticker: 'PYPL', name: 'PayPal Holdings' },
+  { ticker: 'DIS', name: 'The Walt Disney Co.' },
+  { ticker: 'V', name: 'Visa Inc.' },
+  { ticker: 'MA', name: 'Mastercard Inc.' },
+  { ticker: 'JPM', name: 'JPMorgan Chase' },
+  { ticker: 'BAC', name: 'Bank of America' },
+  { ticker: 'WMT', name: 'Walmart Inc.' },
+  { ticker: 'KO', name: 'The Coca-Cola Co.' },
+  { ticker: 'PEP', name: 'PepsiCo Inc.' },
+  { ticker: 'MCD', name: "McDonald's Corp." },
+  { ticker: 'SBUX', name: 'Starbucks Corp.' },
+  { ticker: 'NKE', name: 'Nike Inc.' },
+  { ticker: 'UBER', name: 'Uber Technologies' },
+  { ticker: 'LYFT', name: 'Lyft Inc.' },
+  { ticker: 'SPOT', name: 'Spotify Technology' },
+  { ticker: 'HOOD', name: 'Robinhood Markets' },
+  { ticker: 'COIN', name: 'Coinbase Global Inc.' },
+  { ticker: 'SQ', name: 'Block Inc.' },
+  { ticker: 'SHOP', name: 'Shopify Inc.' },
+  { ticker: 'SNAP', name: 'Snap Inc.' },
+  { ticker: 'TWTR', name: 'X Corp. (Twitter)' },
+  { ticker: 'ZM', name: 'Zoom Video Comm.' },
+  { ticker: 'PLTR', name: 'Palantir Technologies' },
+  { ticker: 'RBLX', name: 'Roblox Corp.' },
+  { ticker: 'GME', name: 'GameStop Corp.' },
+  { ticker: 'AMC', name: 'AMC Entertainment' },
+  { ticker: 'F', name: 'Ford Motor Co.' },
+  { ticker: 'GM', name: 'General Motors Co.' },
+  { ticker: 'RIVN', name: 'Rivian Automotive' },
+  { ticker: 'LCID', name: 'Lucid Group Inc.' },
+  { ticker: 'BA', name: 'Boeing Co.' },
+  { ticker: 'LMT', name: 'Lockheed Martin' },
+  { ticker: 'RTX', name: 'Raytheon Technologies' },
+  { ticker: 'GE', name: 'GE Aerospace' },
+  { ticker: 'XOM', name: 'Exxon Mobil Corp.' },
+  { ticker: 'CVX', name: 'Chevron Corp.' },
+  { ticker: 'PFE', name: 'Pfizer Inc.' },
+  { ticker: 'JNJ', name: 'Johnson & Johnson' },
+  { ticker: 'UNH', name: 'UnitedHealth Group' },
+  { ticker: 'MRNA', name: 'Moderna Inc.' },
+  { ticker: 'BNTX', name: 'BioNTech SE' },
+  { ticker: 'AMGN', name: 'Amgen Inc.' },
+  { ticker: 'GILD', name: 'Gilead Sciences' },
+  { ticker: 'SPY', name: 'SPDR S&P 500 ETF' },
+  { ticker: 'QQQ', name: 'Invesco QQQ Trust' },
+  { ticker: 'IWM', name: 'iShares Russell 2000' },
+  { ticker: 'GLD', name: 'SPDR Gold Shares ETF' },
+  { ticker: 'BRK.B', name: 'Berkshire Hathaway B' },
+];
+
+// =============================================
+// ESTADO
+// =============================================
+let positions = JSON.parse(localStorage.getItem('portfolio_positions') || '[]');
+let currentPrices = {};
+
+// =============================================
+// RELOJ
+// =============================================
+function updateClock() {
+  const now = new Date();
+  const time = now.toLocaleTimeString('es-CL', { timeZone: 'America/New_York', hour12: false });
+  document.getElementById('live-clock').textContent = time + ' ET';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// =============================================
+// BUSQUEDA DE STOCKS
+// =============================================
+function handleSearch(query) {
+  const dd = document.getElementById('search-dropdown');
+  document.getElementById('selected-ticker').value = '';
+  if (!query || query.length < 1) { dd.classList.remove('open'); return; }
+  const q = query.toUpperCase();
+  const results = STOCKS.filter(s =>
+    s.ticker.startsWith(q) || s.name.toUpperCase().includes(q)
+  ).slice(0, 8);
+  if (!results.length) { dd.classList.remove('open'); return; }
+  dd.innerHTML = results.map(s => `
+    <div class="dropdown-item" onclick="selectStock('${s.ticker}','${s.name.replace(/'/g,"\\'")}')">
+      <span class="ticker">${s.ticker}</span>
+      <span class="name">${s.name}</span>
+    </div>
+  `).join('');
+  dd.classList.add('open');
+}
+
+function selectStock(ticker, name) {
+  document.getElementById('search-input').value = `${ticker} — ${name}`;
+  document.getElementById('selected-ticker').value = ticker;
+  document.getElementById('search-dropdown').classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrapper')) {
+    document.getElementById('search-dropdown').classList.remove('open');
+  }
+});
+
+// =============================================
+// MODAL
+// =============================================
+function openModal() {
+  document.getElementById('modal').classList.add('open');
+  // Set today's date as default
+  document.getElementById('date-input').value = new Date().toISOString().split('T')[0];
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  resetForm();
+}
+function resetForm() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('selected-ticker').value = '';
+  document.getElementById('qty-input').value = '';
+  document.getElementById('price-input').value = '';
+  document.getElementById('date-input').value = '';
+}
+
+// =============================================
+// AGREGAR POSICION
+// =============================================
+function addPosition() {
+  const ticker = document.getElementById('selected-ticker').value.trim().toUpperCase();
+  const qty = parseFloat(document.getElementById('qty-input').value);
+  const buyPrice = parseFloat(document.getElementById('price-input').value);
+  const buyDate = document.getElementById('date-input').value;
+
+  if (!ticker) return alert('Selecciona una acción de la lista.');
+  if (!qty || qty <= 0) return alert('Ingresa una cantidad válida.');
+  if (!buyPrice || buyPrice <= 0) return alert('Ingresa un precio de compra válido.');
+  if (!buyDate) return alert('Selecciona la fecha de compra.');
+
+  const stock = STOCKS.find(s => s.ticker === ticker);
+  const position = {
+    id: Date.now(),
+    ticker,
+    name: stock ? stock.name : ticker,
+    qty,
+    buyPrice,
+    buyDate,
+  };
+
+  positions.push(position);
+  savePositions();
+  closeModal();
+  renderHoldings();
+  fetchAllPrices();
+}
+
+function deletePosition(id) {
+  if (!confirm('¿Eliminar esta posición?')) return;
+  positions = positions.filter(p => p.id !== id);
+  savePositions();
+  renderHoldings();
+  updateSummary();
+}
+
+function savePositions() {
+  localStorage.setItem('portfolio_positions', JSON.stringify(positions));
+}
+
+// =============================================
+// PRECIOS — Finnhub API / Fallback demo
+// =============================================
+const demoBasePrices = {};
+
+async function fetchPrice(ticker) {
+  // Si API key es 'demo', simulamos variación
+  if (FINNHUB_API_KEY === 'demo') {
+    if (!demoBasePrices[ticker]) {
+      const pos = positions.find(p => p.ticker === ticker);
+      demoBasePrices[ticker] = pos ? pos.buyPrice * (0.85 + Math.random() * 0.4) : 100;
+    }
+    // Simula pequeña variación por tick
+    const variation = 1 + (Math.random() - 0.5) * 0.002;
+    demoBasePrices[ticker] *= variation;
+    return demoBasePrices[ticker];
+  }
+
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`);
+    const data = await res.json();
+    if (data && data.c && data.c > 0) return data.c;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAllPrices() {
+  const tickers = [...new Set(positions.map(p => p.ticker))];
+  document.getElementById('refresh-label').textContent = 'Actualizando...';
+  for (const t of tickers) {
+    const price = await fetchPrice(t);
+    if (price) currentPrices[t] = price;
+  }
+  document.getElementById('refresh-label').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
+  renderHoldings();
+  updateSummary();
+}
+
+// =============================================
+// RENDER TABLA
+// =============================================
+function renderHoldings() {
+  const container = document.getElementById('holdings-container');
+  if (!positions.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📈</div>
+        <div class="empty-title">No hay posiciones aún</div>
+        <div class="empty-sub">Agrega tu primera inversión para comenzar el seguimiento</div>
+      </div>`;
+    return;
+  }
+
+  const rows = positions.map(p => {
+    const invested = p.qty * p.buyPrice;
+    const currentPrice = currentPrices[p.ticker];
+    let currentVal, pnl, pnlPct, priceCell, pnlCell;
+
+    if (currentPrice) {
+      currentVal = p.qty * currentPrice;
+      pnl = currentVal - invested;
+      pnlPct = ((currentPrice - p.buyPrice) / p.buyPrice) * 100;
+      const cls = pnl >= 0 ? 'up' : 'down';
+      const arrow = pnl >= 0 ? '▲' : '▼';
+      priceCell = `<span class="${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}">$${currentPrice.toFixed(2)}</span>`;
+      pnlCell = `
+        <div class="${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}" style="font-size:0.9rem">
+          ${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toFixed(2)}
+        </div>
+        <div>
+          <span class="pnl-pill ${cls}">${arrow} ${Math.abs(pnlPct).toFixed(2)}%</span>
+        </div>`;
+    } else {
+      priceCell = `<span class="price-loading dot-pulse">cargando</span>`;
+      pnlCell = `<span class="price-loading">—</span>`;
+    }
+
+    const initials = p.ticker.slice(0, 2);
+    const dateStr = new Date(p.buyDate + 'T12:00:00').toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' });
+
+    return `
+    <tr>
+      <td>
+        <div class="ticker-cell">
+          <div class="ticker-icon">${initials}</div>
+          <div>
+            <div class="ticker-name">${p.ticker}</div>
+            <div class="ticker-full">${p.name}</div>
+          </div>
+        </div>
+      </td>
+      <td class="td-right td-mono">
+        <div>$${p.buyPrice.toFixed(2)}</div>
+        <div style="font-size:0.7rem;color:var(--muted)">${dateStr}</div>
+      </td>
+      <td class="td-right td-mono">${p.qty}</td>
+      <td class="td-right td-mono">$${invested.toFixed(2)}</td>
+      <td class="td-right td-mono">${priceCell}</td>
+      <td class="td-right">${pnlCell}</td>
+      <td class="td-right">
+        <button class="btn-delete" onclick="deletePosition(${p.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="holdings-wrap">
+      <table class="holdings-table">
+        <thead>
+          <tr>
+            <th>Activo</th>
+            <th class="right">Precio Compra</th>
+            <th class="right">Cantidad</th>
+            <th class="right">Invertido</th>
+            <th class="right">Precio Actual</th>
+            <th class="right">P&L</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// =============================================
+// RESUMEN SUPERIOR
+// =============================================
+function updateSummary() {
+  let totalInvested = 0, totalCurrent = 0;
+  let bestTicker = '—', bestPct = -Infinity;
+
+  positions.forEach(p => {
+    const invested = p.qty * p.buyPrice;
+    totalInvested += invested;
+    const cp = currentPrices[p.ticker];
+    if (cp) {
+      const val = p.qty * cp;
+      totalCurrent += val;
+      const pct = ((cp - p.buyPrice) / p.buyPrice) * 100;
+      if (pct > bestPct) { bestPct = pct; bestTicker = p.ticker; }
+    } else {
+      totalCurrent += invested;
+    }
+  });
+
+  const totalPnl = totalCurrent - totalInvested;
+  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+  document.getElementById('total-invested').textContent = '$' + totalInvested.toFixed(2);
+  document.getElementById('total-current').textContent = '$' + totalCurrent.toFixed(2);
+
+  const pnlEl = document.getElementById('total-pnl');
+  pnlEl.textContent = (totalPnl >= 0 ? '+$' : '-$') + Math.abs(totalPnl).toFixed(2);
+  pnlEl.className = 'summary-value ' + (totalPnl >= 0 ? 'gain' : 'loss');
+
+  document.getElementById('total-pnl-pct').textContent = (totalPnlPct >= 0 ? '+' : '') + totalPnlPct.toFixed(2) + '%';
+  document.getElementById('positions-count').textContent = positions.length + ' posición' + (positions.length !== 1 ? 'es' : '');
+  document.getElementById('best-position').textContent = bestTicker === '—' ? '—' : bestTicker;
+  document.getElementById('best-pct').textContent = bestPct !== -Infinity ? (bestPct >= 0 ? '+' : '') + bestPct.toFixed(2) + '%' : '—';
+
+  const now = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('last-update').textContent = 'Actualizado ' + now;
+}
+
+// =============================================
+// INIT
+// =============================================
+renderHoldings();
+updateSummary();
+if (positions.length) fetchAllPrices();
+
+// Auto-refresh cada 60 segundos
+setInterval(() => {
+  if (positions.length) fetchAllPrices();
+}, 60000);
+</script>
+</body>
+</html>
